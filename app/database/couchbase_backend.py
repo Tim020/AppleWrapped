@@ -5,16 +5,13 @@ Couchbase backend implementation with native N1QL JOINs and transactions
 
 from contextlib import contextmanager
 from typing import Optional, Dict, List
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
 from couchbase.options import ClusterOptions, QueryOptions
 from couchbase.exceptions import (
-    CouchbaseException,
     DocumentNotFoundException,
-    BucketNotFoundException,
-    CollectionNotFoundException
 )
 from couchbase.management.collections import CollectionSpec
 
@@ -48,14 +45,10 @@ class CouchbaseBackend(DatabaseBackend):
                 return False
 
             # Connect to cluster
-            auth = PasswordAuthenticator(
-                self.config.username,
-                self.config.password
-            )
+            auth = PasswordAuthenticator(self.config.username, self.config.password)
 
             self.cluster = Cluster(
-                self.config.get_connection_string(),
-                ClusterOptions(auth)
+                self.config.get_connection_string(), ClusterOptions(auth)
             )
 
             # Wait for cluster to be ready
@@ -72,22 +65,28 @@ class CouchbaseBackend(DatabaseBackend):
 
             # Store collection references
             self.collections = {
-                'tracks': self.scope.collection(self.config.tracks_collection),
-                'snapshots': self.scope.collection(self.config.snapshots_collection),
-                'playhistory': self.scope.collection(self.config.playhistory_collection),
-                'dailyplays': self.scope.collection(self.config.dailyplays_collection),
-                'counters': self.scope.collection(self.config.counters_collection),
+                "tracks": self.scope.collection(self.config.tracks_collection),
+                "snapshots": self.scope.collection(self.config.snapshots_collection),
+                "playhistory": self.scope.collection(
+                    self.config.playhistory_collection
+                ),
+                "dailyplays": self.scope.collection(self.config.dailyplays_collection),
+                "counters": self.scope.collection(self.config.counters_collection),
             }
 
             # Create indexes
             self._create_indexes()
 
             self._connected = True
-            logger.info(f"Connected to Couchbase backend at {self.config.host}, bucket: {self.config.bucket_name}, scope: {self.config.scope_name}")
+            logger.info(
+                f"Connected to Couchbase backend at {self.config.host}, bucket: {self.config.bucket_name}, scope: {self.config.scope_name}"
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Failed to connect to Couchbase at {self.config.host}: {str(e)}")
+            logger.error(
+                f"Failed to connect to Couchbase at {self.config.host}: {str(e)}"
+            )
             self._connected = False
             return False
 
@@ -99,8 +98,12 @@ class CouchbaseBackend(DatabaseBackend):
             # Get existing collections in the scope
             try:
                 all_scopes = collection_manager.get_all_scopes()
-                scope_spec = next((s for s in all_scopes if s.name == self.config.scope_name), None)
-                existing_collections = {c.name for c in scope_spec.collections} if scope_spec else set()
+                scope_spec = next(
+                    (s for s in all_scopes if s.name == self.config.scope_name), None
+                )
+                existing_collections = (
+                    {c.name for c in scope_spec.collections} if scope_spec else set()
+                )
             except Exception:
                 existing_collections = set()
 
@@ -117,11 +120,12 @@ class CouchbaseBackend(DatabaseBackend):
             for coll_name in required_collections:
                 if coll_name not in existing_collections:
                     collection_spec = CollectionSpec(
-                        coll_name,
-                        scope_name=self.config.scope_name
+                        coll_name, scope_name=self.config.scope_name
                     )
                     collection_manager.create_collection(collection_spec)
-                    logger.info(f"Created Couchbase collection '{coll_name}' in scope '{self.config.scope_name}'")
+                    logger.info(
+                        f"Created Couchbase collection '{coll_name}' in scope '{self.config.scope_name}'"
+                    )
 
         except Exception as e:
             logger.warning(f"Failed to create Couchbase collections: {str(e)}")
@@ -136,21 +140,16 @@ class CouchbaseBackend(DatabaseBackend):
                 # DailyPlays indexes (for date range queries)
                 f"""CREATE INDEX IF NOT EXISTS idx_dailyplays_date
                     ON `{self.config.bucket_name}`.`{self.config.scope_name}`.`{self.config.dailyplays_collection}`(date)""",
-
                 f"""CREATE INDEX IF NOT EXISTS idx_dailyplays_persistent_id
                     ON `{self.config.bucket_name}`.`{self.config.scope_name}`.`{self.config.dailyplays_collection}`(persistent_id)""",
-
                 # Tracks indexes
                 f"""CREATE INDEX IF NOT EXISTS idx_tracks_artist
                     ON `{self.config.bucket_name}`.`{self.config.scope_name}`.`{self.config.tracks_collection}`(artist)""",
-
                 f"""CREATE INDEX IF NOT EXISTS idx_tracks_genre
                     ON `{self.config.bucket_name}`.`{self.config.scope_name}`.`{self.config.tracks_collection}`(genre)""",
-
                 # PlayHistory indexes
                 f"""CREATE INDEX IF NOT EXISTS idx_playhistory_snapshot
                     ON `{self.config.bucket_name}`.`{self.config.scope_name}`.`{self.config.playhistory_collection}`(snapshot_id)""",
-
                 # Snapshots indexes
                 f"""CREATE INDEX IF NOT EXISTS idx_snapshots_timestamp
                     ON `{self.config.bucket_name}`.`{self.config.scope_name}`.`{self.config.snapshots_collection}`(timestamp)""",
@@ -160,7 +159,9 @@ class CouchbaseBackend(DatabaseBackend):
                 try:
                     self.cluster.query(index_query).execute()
                 except Exception as e:
-                    logger.debug(f"Skipped index creation (may already exist): {index_query[:50]}... - {str(e)}")
+                    logger.debug(
+                        f"Skipped index creation (may already exist): {index_query[:50]}... - {str(e)}"
+                    )
 
             logger.info("Successfully created Couchbase indexes")
 
@@ -174,7 +175,7 @@ class CouchbaseBackend(DatabaseBackend):
 
         try:
             # Quick health check query
-            result = self.cluster.query(
+            self.cluster.query(
                 f"SELECT RAW COUNT(*) FROM `{self.config.bucket_name}`.`{self.config.scope_name}`.`{self.config.tracks_collection}` LIMIT 1"
             ).execute()
             return True
@@ -206,21 +207,25 @@ class CouchbaseBackend(DatabaseBackend):
     def get_track(self, persistent_id: str) -> Optional[Dict]:
         """Get a track by persistent_id"""
         try:
-            result = self.collections['tracks'].get(persistent_id)
+            result = self.collections["tracks"].get(persistent_id)
             return result.content_as[dict]
         except DocumentNotFoundException:
             return None
         except Exception as e:
-            logger.error(f"Failed to get track '{persistent_id}' from Couchbase: {str(e)}")
+            logger.error(
+                f"Failed to get track '{persistent_id}' from Couchbase: {str(e)}"
+            )
             return None
 
     def upsert_track(self, track_data: Dict):
         """Insert or update a track"""
         try:
-            persistent_id = track_data['persistent_id']
-            self.collections['tracks'].upsert(persistent_id, track_data)
+            persistent_id = track_data["persistent_id"]
+            self.collections["tracks"].upsert(persistent_id, track_data)
         except Exception as e:
-            logger.error(f"Failed to upsert track '{track_data.get('persistent_id')}' to Couchbase: {str(e)}")
+            logger.error(
+                f"Failed to upsert track '{track_data.get('persistent_id')}' to Couchbase: {str(e)}"
+            )
             raise
 
     def get_all_tracks(self) -> List[Dict]:
@@ -249,21 +254,22 @@ class CouchbaseBackend(DatabaseBackend):
 
             # Increment counter atomically
             # If counter doesn't exist, it will be created starting at 1
-            counter_result = self.collections['counters'].binary().increment(
-                'snapshot_id',
-                IncrementOptions(
-                    initial=SignedInt64(1),
-                    delta=DeltaValue(1)
+            counter_result = (
+                self.collections["counters"]
+                .binary()
+                .increment(
+                    "snapshot_id",
+                    IncrementOptions(initial=SignedInt64(1), delta=DeltaValue(1)),
                 )
             )
             snapshot_id = counter_result.content
 
             # Add snapshot_id to data
             snapshot_doc = snapshot_data.copy()
-            snapshot_doc['snapshot_id'] = snapshot_id
+            snapshot_doc["snapshot_id"] = snapshot_id
 
             # Store snapshot
-            self.collections['snapshots'].upsert(str(snapshot_id), snapshot_doc)
+            self.collections["snapshots"].upsert(str(snapshot_id), snapshot_doc)
 
             return snapshot_id
 
@@ -283,7 +289,7 @@ class CouchbaseBackend(DatabaseBackend):
             """
             result = self.cluster.query(
                 query,
-                QueryOptions(named_parameters={'before_timestamp': before_timestamp})
+                QueryOptions(named_parameters={"before_timestamp": before_timestamp}),
             ).execute()
 
             rows = list(result)
@@ -320,14 +326,15 @@ class CouchbaseBackend(DatabaseBackend):
                 WHERE snapshot_id = $snapshot_id
             """
             result = self.cluster.query(
-                query,
-                QueryOptions(named_parameters={'snapshot_id': snapshot_id})
+                query, QueryOptions(named_parameters={"snapshot_id": snapshot_id})
             ).execute()
 
             return [row[self.config.playhistory_collection] for row in result]
 
         except Exception as e:
-            logger.error(f"Failed to get play history for snapshot {snapshot_id} from Couchbase: {str(e)}")
+            logger.error(
+                f"Failed to get play history for snapshot {snapshot_id} from Couchbase: {str(e)}"
+            )
             return []
 
     def insert_play_history(self, history_data: Dict):
@@ -335,9 +342,11 @@ class CouchbaseBackend(DatabaseBackend):
         try:
             # Use composite key: snapshot_id::persistent_id
             doc_id = f"{history_data['snapshot_id']}::{history_data['persistent_id']}"
-            self.collections['playhistory'].upsert(doc_id, history_data)
+            self.collections["playhistory"].upsert(doc_id, history_data)
         except Exception as e:
-            logger.error(f"Failed to insert play history (snapshot: {history_data.get('snapshot_id')}, track: {history_data.get('persistent_id')}) to Couchbase: {str(e)}")
+            logger.error(
+                f"Failed to insert play history (snapshot: {history_data.get('snapshot_id')}, track: {history_data.get('persistent_id')}) to Couchbase: {str(e)}"
+            )
             raise
 
     def get_all_play_history(self) -> List[Dict]:
@@ -363,32 +372,36 @@ class CouchbaseBackend(DatabaseBackend):
 
             # Try to get existing document
             try:
-                existing = self.collections['dailyplays'].get(doc_id)
+                existing = self.collections["dailyplays"].get(doc_id)
                 existing_data = existing.content_as[dict]
 
                 # Accumulate deltas
-                existing_data['plays_delta'] += daily_data.get('plays_delta', 0)
-                existing_data['skips_delta'] += daily_data.get('skips_delta', 0)
+                existing_data["plays_delta"] += daily_data.get("plays_delta", 0)
+                existing_data["skips_delta"] += daily_data.get("skips_delta", 0)
 
-                self.collections['dailyplays'].upsert(doc_id, existing_data)
+                self.collections["dailyplays"].upsert(doc_id, existing_data)
             except DocumentNotFoundException:
                 # Document doesn't exist, create new
-                self.collections['dailyplays'].upsert(doc_id, daily_data)
+                self.collections["dailyplays"].upsert(doc_id, daily_data)
 
         except Exception as e:
-            logger.error(f"Failed to upsert daily play (date: {daily_data.get('date')}, track: {daily_data.get('persistent_id')}) to Couchbase: {str(e)}")
+            logger.error(
+                f"Failed to upsert daily play (date: {daily_data.get('date')}, track: {daily_data.get('persistent_id')}) to Couchbase: {str(e)}"
+            )
             raise
 
     def get_daily_play(self, persistent_id: str, date: str) -> Optional[Dict]:
         """Get a daily play record"""
         try:
             doc_id = f"{date}::{persistent_id}"
-            result = self.collections['dailyplays'].get(doc_id)
+            result = self.collections["dailyplays"].get(doc_id)
             return result.content_as[dict]
         except DocumentNotFoundException:
             return None
         except Exception as e:
-            logger.error(f"Failed to get daily play for track '{persistent_id}' on date '{date}' from Couchbase: {str(e)}")
+            logger.error(
+                f"Failed to get daily play for track '{persistent_id}' on date '{date}' from Couchbase: {str(e)}"
+            )
             return None
 
     def get_all_daily_plays(self) -> List[Dict]:
@@ -406,7 +419,9 @@ class CouchbaseBackend(DatabaseBackend):
 
     # Query Operations (Reporting) - Using Native N1QL JOINs
 
-    def query_top_tracks(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_tracks(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top tracks by play count using N1QL JOIN"""
         try:
             query = f"""
@@ -423,11 +438,13 @@ class CouchbaseBackend(DatabaseBackend):
 
             result = self.cluster.query(
                 query,
-                QueryOptions(named_parameters={
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'limit': limit
-                })
+                QueryOptions(
+                    named_parameters={
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "limit": limit,
+                    }
+                ),
             ).execute()
 
             return [dict(row) for row in result]
@@ -436,7 +453,9 @@ class CouchbaseBackend(DatabaseBackend):
             logger.error(f"Failed to query top tracks from Couchbase: {str(e)}")
             return []
 
-    def query_top_artists(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_artists(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top artists by play count using N1QL JOIN"""
         try:
             query = f"""
@@ -454,11 +473,13 @@ class CouchbaseBackend(DatabaseBackend):
 
             result = self.cluster.query(
                 query,
-                QueryOptions(named_parameters={
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'limit': limit
-                })
+                QueryOptions(
+                    named_parameters={
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "limit": limit,
+                    }
+                ),
             ).execute()
 
             return [dict(row) for row in result]
@@ -467,7 +488,9 @@ class CouchbaseBackend(DatabaseBackend):
             logger.error(f"Failed to query top artists from Couchbase: {str(e)}")
             return []
 
-    def query_top_albums(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_albums(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top albums by play count using N1QL JOIN"""
         try:
             query = f"""
@@ -485,11 +508,13 @@ class CouchbaseBackend(DatabaseBackend):
 
             result = self.cluster.query(
                 query,
-                QueryOptions(named_parameters={
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'limit': limit
-                })
+                QueryOptions(
+                    named_parameters={
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "limit": limit,
+                    }
+                ),
             ).execute()
 
             return [dict(row) for row in result]
@@ -498,7 +523,9 @@ class CouchbaseBackend(DatabaseBackend):
             logger.error(f"Failed to query top albums from Couchbase: {str(e)}")
             return []
 
-    def query_top_genres(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_genres(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top genres by play count using N1QL JOIN"""
         try:
             query = f"""
@@ -516,11 +543,13 @@ class CouchbaseBackend(DatabaseBackend):
 
             result = self.cluster.query(
                 query,
-                QueryOptions(named_parameters={
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'limit': limit
-                })
+                QueryOptions(
+                    named_parameters={
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "limit": limit,
+                    }
+                ),
             ).execute()
 
             return [dict(row) for row in result]
@@ -529,7 +558,9 @@ class CouchbaseBackend(DatabaseBackend):
             logger.error(f"Failed to query top genres from Couchbase: {str(e)}")
             return []
 
-    def query_most_skipped(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_most_skipped(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query most skipped tracks using N1QL JOIN"""
         try:
             query = f"""
@@ -547,17 +578,21 @@ class CouchbaseBackend(DatabaseBackend):
 
             result = self.cluster.query(
                 query,
-                QueryOptions(named_parameters={
-                    'start_date': start_date,
-                    'end_date': end_date,
-                    'limit': limit
-                })
+                QueryOptions(
+                    named_parameters={
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "limit": limit,
+                    }
+                ),
             ).execute()
 
             return [dict(row) for row in result]
 
         except Exception as e:
-            logger.error(f"Failed to query most skipped tracks from Couchbase: {str(e)}")
+            logger.error(
+                f"Failed to query most skipped tracks from Couchbase: {str(e)}"
+            )
             return []
 
     def query_listening_stats(self, start_date: str, end_date: str) -> Dict:
@@ -578,36 +613,35 @@ class CouchbaseBackend(DatabaseBackend):
 
             result = self.cluster.query(
                 query,
-                QueryOptions(named_parameters={
-                    'start_date': start_date,
-                    'end_date': end_date
-                })
+                QueryOptions(
+                    named_parameters={"start_date": start_date, "end_date": end_date}
+                ),
             ).execute()
 
             rows = list(result)
             if rows:
                 stats = dict(rows[0])
                 return {
-                    'total_plays': stats.get('total_plays') or 0,
-                    'total_skips': stats.get('total_skips') or 0,
-                    'unique_tracks': stats.get('unique_tracks') or 0,
-                    'total_time': stats.get('total_time') or 0
+                    "total_plays": stats.get("total_plays") or 0,
+                    "total_skips": stats.get("total_skips") or 0,
+                    "unique_tracks": stats.get("unique_tracks") or 0,
+                    "total_time": stats.get("total_time") or 0,
                 }
 
             return {
-                'total_plays': 0,
-                'total_skips': 0,
-                'unique_tracks': 0,
-                'total_time': 0
+                "total_plays": 0,
+                "total_skips": 0,
+                "unique_tracks": 0,
+                "total_time": 0,
             }
 
         except Exception as e:
             logger.error(f"Failed to query listening stats from Couchbase: {str(e)}")
             return {
-                'total_plays': 0,
-                'total_skips': 0,
-                'unique_tracks': 0,
-                'total_time': 0
+                "total_plays": 0,
+                "total_skips": 0,
+                "unique_tracks": 0,
+                "total_time": 0,
             }
 
     def query_stats(self) -> Dict:
@@ -640,8 +674,8 @@ class CouchbaseBackend(DatabaseBackend):
             earliest_date = None
             latest_date = None
             if date_rows:
-                earliest_date = date_rows[0].get('earliest_date')
-                latest_date = date_rows[0].get('latest_date')
+                earliest_date = date_rows[0].get("earliest_date")
+                latest_date = date_rows[0].get("latest_date")
 
             # Get earliest and latest snapshots
             snapshot_time_query = f"""
@@ -654,25 +688,25 @@ class CouchbaseBackend(DatabaseBackend):
             earliest_snapshot = None
             latest_snapshot = None
             if snapshot_time_rows:
-                earliest_snapshot = snapshot_time_rows[0].get('earliest_snapshot')
-                latest_snapshot = snapshot_time_rows[0].get('latest_snapshot')
+                earliest_snapshot = snapshot_time_rows[0].get("earliest_snapshot")
+                latest_snapshot = snapshot_time_rows[0].get("latest_snapshot")
 
             return {
-                'total_tracks': total_tracks,
-                'total_snapshots': total_snapshots,
-                'earliest_date': earliest_date,
-                'latest_date': latest_date,
-                'earliest_snapshot': earliest_snapshot,
-                'latest_snapshot': latest_snapshot
+                "total_tracks": total_tracks,
+                "total_snapshots": total_snapshots,
+                "earliest_date": earliest_date,
+                "latest_date": latest_date,
+                "earliest_snapshot": earliest_snapshot,
+                "latest_snapshot": latest_snapshot,
             }
 
         except Exception as e:
             logger.error(f"Failed to query overall stats from Couchbase: {str(e)}")
             return {
-                'total_tracks': 0,
-                'total_snapshots': 0,
-                'earliest_date': None,
-                'latest_date': None,
-                'earliest_snapshot': None,
-                'latest_snapshot': None
+                "total_tracks": 0,
+                "total_snapshots": 0,
+                "earliest_date": None,
+                "latest_date": None,
+                "earliest_snapshot": None,
+                "latest_snapshot": None,
             }

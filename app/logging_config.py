@@ -20,11 +20,7 @@ def configure_logging(verbosity: int = 0) -> FilteringBoundLogger:
         Configured logger instance
     """
     # Map verbosity to log levels
-    level_map = {
-        0: logging.WARNING,
-        1: logging.INFO,
-        2: logging.DEBUG
-    }
+    level_map = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
     log_level = level_map.get(verbosity, logging.WARNING)
 
     # Configure standard logging
@@ -45,11 +41,13 @@ def configure_logging(verbosity: int = 0) -> FilteringBoundLogger:
     # Add callsite info only at DEBUG level
     if log_level == logging.DEBUG:
         processors.append(
-            structlog.processors.CallsiteParameterAdder({
-                structlog.processors.CallsiteParameter.FILENAME,
-                structlog.processors.CallsiteParameter.FUNC_NAME,
-                structlog.processors.CallsiteParameter.LINENO,
-            })
+            structlog.processors.CallsiteParameterAdder(
+                {
+                    structlog.processors.CallsiteParameter.FILENAME,
+                    structlog.processors.CallsiteParameter.FUNC_NAME,
+                    structlog.processors.CallsiteParameter.LINENO,
+                }
+            )
         )
 
     # Use colored console renderer for TTY, JSON for pipes

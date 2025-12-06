@@ -3,7 +3,6 @@
 Tests for configuration management
 """
 
-import os
 import pytest
 from app.config import CouchbaseConfig
 
@@ -30,10 +29,7 @@ class TestCouchbaseConfig:
     def test_custom_values(self):
         """Test creating config with custom values"""
         config = CouchbaseConfig(
-            host="192.168.1.100",
-            port=9000,
-            username="admin",
-            password="secret"
+            host="192.168.1.100", port=9000, username="admin", password="secret"
         )
 
         assert config.host == "192.168.1.100"
@@ -73,32 +69,32 @@ class TestCouchbaseConfig:
     def test_from_args_and_env_cli_priority(self, mock_args, monkeypatch):
         """Test CLI arguments take priority over environment variables"""
         # Set environment variables
-        monkeypatch.setenv('COUCHBASE_HOST', 'env-host')
-        monkeypatch.setenv('COUCHBASE_PORT', '9000')
-        monkeypatch.setenv('COUCHBASE_USERNAME', 'env-user')
-        monkeypatch.setenv('COUCHBASE_PASSWORD', 'env-pass')
+        monkeypatch.setenv("COUCHBASE_HOST", "env-host")
+        monkeypatch.setenv("COUCHBASE_PORT", "9000")
+        monkeypatch.setenv("COUCHBASE_USERNAME", "env-user")
+        monkeypatch.setenv("COUCHBASE_PASSWORD", "env-pass")
 
         # Set CLI args to override
-        mock_args.couchbase_host = 'cli-host'
+        mock_args.couchbase_host = "cli-host"
         mock_args.couchbase_port = 8091
-        mock_args.couchbase_username = 'cli-user'
-        mock_args.couchbase_password = 'cli-pass'
+        mock_args.couchbase_username = "cli-user"
+        mock_args.couchbase_password = "cli-pass"
 
         config = CouchbaseConfig.from_args_and_env(mock_args)
 
         # CLI args should take priority
-        assert config.host == 'cli-host'
+        assert config.host == "cli-host"
         assert config.port == 8091
-        assert config.username == 'cli-user'
-        assert config.password == 'cli-pass'
+        assert config.username == "cli-user"
+        assert config.password == "cli-pass"
 
     def test_from_args_and_env_fallback_to_env(self, mock_args, monkeypatch):
         """Test falls back to environment variables when CLI args not provided"""
         # Set environment variables
-        monkeypatch.setenv('COUCHBASE_HOST', 'env-host')
-        monkeypatch.setenv('COUCHBASE_PORT', '9000')
-        monkeypatch.setenv('COUCHBASE_USERNAME', 'env-user')
-        monkeypatch.setenv('COUCHBASE_PASSWORD', 'env-pass')
+        monkeypatch.setenv("COUCHBASE_HOST", "env-host")
+        monkeypatch.setenv("COUCHBASE_PORT", "9000")
+        monkeypatch.setenv("COUCHBASE_USERNAME", "env-user")
+        monkeypatch.setenv("COUCHBASE_PASSWORD", "env-pass")
 
         # CLI args are None/empty
         mock_args.couchbase_host = None
@@ -109,10 +105,10 @@ class TestCouchbaseConfig:
         config = CouchbaseConfig.from_args_and_env(mock_args)
 
         # Should use environment variables
-        assert config.host == 'env-host'
+        assert config.host == "env-host"
         assert config.port == 9000
-        assert config.username == 'env-user'
-        assert config.password == 'env-pass'
+        assert config.username == "env-user"
+        assert config.password == "env-pass"
 
     def test_from_args_and_env_defaults(self, mock_args):
         """Test uses defaults when neither CLI nor env provided"""
@@ -127,8 +123,8 @@ class TestCouchbaseConfig:
     def test_from_args_and_env_mixed_sources(self, mock_args, monkeypatch):
         """Test using mixed sources (some CLI, some env, some default)"""
         # Only set host in environment
-        monkeypatch.setenv('COUCHBASE_HOST', 'env-host')
-        monkeypatch.setenv('COUCHBASE_USERNAME', 'env-user')
+        monkeypatch.setenv("COUCHBASE_HOST", "env-host")
+        monkeypatch.setenv("COUCHBASE_USERNAME", "env-user")
 
         # Only set port in CLI
         mock_args.couchbase_host = None
@@ -138,7 +134,7 @@ class TestCouchbaseConfig:
 
         config = CouchbaseConfig.from_args_and_env(mock_args)
 
-        assert config.host == 'env-host'  # From env
-        assert config.port == 9000        # From CLI
-        assert config.username == 'env-user'  # From env
-        assert config.password == ""      # Default
+        assert config.host == "env-host"  # From env
+        assert config.port == 9000  # From CLI
+        assert config.username == "env-user"  # From env
+        assert config.password == ""  # Default

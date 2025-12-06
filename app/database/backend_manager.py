@@ -39,7 +39,11 @@ class BackendManager(DatabaseBackend):
         self.sqlite_backend: Optional[SQLiteBackend] = None
         self.active_backend: Optional[DatabaseBackend] = None
 
-        self._force_sqlite = os.environ.get('FORCE_SQLITE', '').lower() in ('1', 'true', 'yes')
+        self._force_sqlite = os.environ.get("FORCE_SQLITE", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         self._connected = False
 
     def connect(self) -> bool:
@@ -53,19 +57,25 @@ class BackendManager(DatabaseBackend):
         """
         # Check if we should force SQLite
         if self._force_sqlite:
-            logger.info("Forcing SQLite backend due to FORCE_SQLITE environment variable")
+            logger.info(
+                "Forcing SQLite backend due to FORCE_SQLITE environment variable"
+            )
             return self._connect_sqlite()
 
         # Try Couchbase first if configured
         if self.couchbase_config.is_configured():
-            logger.info(f"Attempting to connect to Couchbase at {self.couchbase_config.host}")
+            logger.info(
+                f"Attempting to connect to Couchbase at {self.couchbase_config.host}"
+            )
 
             self.couchbase_backend = CouchbaseBackend(self.couchbase_config)
 
             if self.couchbase_backend.connect():
                 self.active_backend = self.couchbase_backend
                 self._connected = True
-                logger.info(f"Successfully connected to Couchbase at {self.couchbase_config.host}")
+                logger.info(
+                    f"Successfully connected to Couchbase at {self.couchbase_config.host}"
+                )
                 return True
             else:
                 logger.warning("Couchbase connection failed, falling back to SQLite")
@@ -96,11 +106,17 @@ class BackendManager(DatabaseBackend):
 
     def is_using_couchbase(self) -> bool:
         """Check if currently using Couchbase backend"""
-        return self.active_backend is self.couchbase_backend and self.couchbase_backend is not None
+        return (
+            self.active_backend is self.couchbase_backend
+            and self.couchbase_backend is not None
+        )
 
     def is_using_sqlite(self) -> bool:
         """Check if currently using SQLite backend"""
-        return self.active_backend is self.sqlite_backend and self.sqlite_backend is not None
+        return (
+            self.active_backend is self.sqlite_backend
+            and self.sqlite_backend is not None
+        )
 
     def try_reconnect_couchbase(self) -> bool:
         """
@@ -169,7 +185,9 @@ class BackendManager(DatabaseBackend):
         except Exception as e:
             # If operation fails and we're using Couchbase, try failover
             if self.is_using_couchbase():
-                logger.error(f"Operation 'upsert_track' failed on Couchbase: {str(e)}, failing over to SQLite")
+                logger.error(
+                    f"Operation 'upsert_track' failed on Couchbase: {str(e)}, failing over to SQLite"
+                )
                 if self._failover_to_sqlite():
                     # Retry on SQLite
                     self.active_backend.upsert_track(track_data)
@@ -193,7 +211,9 @@ class BackendManager(DatabaseBackend):
             return self.active_backend.create_snapshot(snapshot_data)
         except Exception as e:
             if self.is_using_couchbase():
-                logger.error(f"Operation 'create_snapshot' failed on Couchbase: {str(e)}, failing over to SQLite")
+                logger.error(
+                    f"Operation 'create_snapshot' failed on Couchbase: {str(e)}, failing over to SQLite"
+                )
                 if self._failover_to_sqlite():
                     return self.active_backend.create_snapshot(snapshot_data)
                 else:
@@ -228,7 +248,9 @@ class BackendManager(DatabaseBackend):
             self.active_backend.insert_play_history(history_data)
         except Exception as e:
             if self.is_using_couchbase():
-                logger.error(f"Operation 'insert_play_history' failed on Couchbase: {str(e)}, failing over to SQLite")
+                logger.error(
+                    f"Operation 'insert_play_history' failed on Couchbase: {str(e)}, failing over to SQLite"
+                )
                 if self._failover_to_sqlite():
                     self.active_backend.insert_play_history(history_data)
                 else:
@@ -251,7 +273,9 @@ class BackendManager(DatabaseBackend):
             self.active_backend.upsert_daily_play(daily_data)
         except Exception as e:
             if self.is_using_couchbase():
-                logger.error(f"Operation 'upsert_daily_play' failed on Couchbase: {str(e)}, failing over to SQLite")
+                logger.error(
+                    f"Operation 'upsert_daily_play' failed on Couchbase: {str(e)}, failing over to SQLite"
+                )
                 if self._failover_to_sqlite():
                     self.active_backend.upsert_daily_play(daily_data)
                 else:
@@ -271,31 +295,41 @@ class BackendManager(DatabaseBackend):
             raise RuntimeError("No active backend available")
         return self.active_backend.get_all_daily_plays()
 
-    def query_top_tracks(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_tracks(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top tracks by play count"""
         if not self.active_backend:
             raise RuntimeError("No active backend available")
         return self.active_backend.query_top_tracks(start_date, end_date, limit)
 
-    def query_top_artists(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_artists(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top artists by play count"""
         if not self.active_backend:
             raise RuntimeError("No active backend available")
         return self.active_backend.query_top_artists(start_date, end_date, limit)
 
-    def query_top_albums(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_albums(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top albums by play count"""
         if not self.active_backend:
             raise RuntimeError("No active backend available")
         return self.active_backend.query_top_albums(start_date, end_date, limit)
 
-    def query_top_genres(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_genres(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query top genres by play count"""
         if not self.active_backend:
             raise RuntimeError("No active backend available")
         return self.active_backend.query_top_genres(start_date, end_date, limit)
 
-    def query_most_skipped(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_most_skipped(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """Query most skipped tracks"""
         if not self.active_backend:
             raise RuntimeError("No active backend available")

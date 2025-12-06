@@ -11,46 +11,74 @@ from app.database.sync_manager import SyncManager
 
 
 def main():
-
     # Determine default database path (script directory)
     default_db_path = Path(__file__).resolve().parent / "apple_music_history.db"
 
-    parser = argparse.ArgumentParser(description='Apple Music History Tracker')
-    parser.add_argument('-v', '--verbose', action='count', default=0,
-                        help='Increase verbosity (-v=INFO, -vv=DEBUG)')
-    parser.add_argument('--db-path', type=Path, default=default_db_path,
-                        help=f'Database file path (default: {default_db_path})')
+    parser = argparse.ArgumentParser(description="Apple Music History Tracker")
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v=INFO, -vv=DEBUG)",
+    )
+    parser.add_argument(
+        "--db-path",
+        type=Path,
+        default=default_db_path,
+        help=f"Database file path (default: {default_db_path})",
+    )
 
     # Couchbase connection arguments
-    parser.add_argument('--couchbase-host', type=str, default=None,
-                        help='Couchbase host (e.g., 192.168.1.100)')
-    parser.add_argument('--couchbase-port', type=int, default=8091,
-                        help='Couchbase port (default: 8091)')
-    parser.add_argument('--couchbase-username', type=str, default='',
-                        help='Couchbase username')
-    parser.add_argument('--couchbase-password', type=str, default='',
-                        help='Couchbase password')
+    parser.add_argument(
+        "--couchbase-host",
+        type=str,
+        default=None,
+        help="Couchbase host (e.g., 192.168.1.100)",
+    )
+    parser.add_argument(
+        "--couchbase-port",
+        type=int,
+        default=8091,
+        help="Couchbase port (default: 8091)",
+    )
+    parser.add_argument(
+        "--couchbase-username", type=str, default="", help="Couchbase username"
+    )
+    parser.add_argument(
+        "--couchbase-password", type=str, default="", help="Couchbase password"
+    )
 
-    subparsers = parser.add_subparsers(dest='command', help='Commands')
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Collect command
-    collect_parser = subparsers.add_parser('collect', help='Collect a new snapshot')
-    collect_parser.add_argument('--workers', type=int, default=20,
-                                help='Number of parallel workers (default: 20)')
+    collect_parser = subparsers.add_parser("collect", help="Collect a new snapshot")
+    collect_parser.add_argument(
+        "--workers",
+        type=int,
+        default=20,
+        help="Number of parallel workers (default: 20)",
+    )
     collect_parser.set_defaults(func=collect_command)
 
     # Report command
-    report_parser = subparsers.add_parser('report', help='Generate wrapped report')
-    report_parser.add_argument('--start-date', type=str, default=None,
-                               help='Start date (YYYY-MM-DD)')
-    report_parser.add_argument('--end-date', type=str, default=None,
-                               help='End date (YYYY-MM-DD)')
-    report_parser.add_argument('--limit', type=int, default=10,
-                               help='Number of top items to show (default: 10)')
+    report_parser = subparsers.add_parser("report", help="Generate wrapped report")
+    report_parser.add_argument(
+        "--start-date", type=str, default=None, help="Start date (YYYY-MM-DD)"
+    )
+    report_parser.add_argument(
+        "--end-date", type=str, default=None, help="End date (YYYY-MM-DD)"
+    )
+    report_parser.add_argument(
+        "--limit",
+        type=int,
+        default=10,
+        help="Number of top items to show (default: 10)",
+    )
     report_parser.set_defaults(func=report_command)
 
     # Stats command
-    stats_parser = subparsers.add_parser('stats', help='Show database statistics')
+    stats_parser = subparsers.add_parser("stats", help="Show database statistics")
     stats_parser.set_defaults(func=stats_command)
 
     args = parser.parse_args()
@@ -84,13 +112,16 @@ def main():
         args.func(backend_manager, args)
 
         # If we just finished collecting and we're using SQLite, try to sync to Couchbase
-        if args.command == 'collect' and backend_manager.is_using_sqlite() and couchbase_config.is_configured():
+        if (
+            args.command == "collect"
+            and backend_manager.is_using_sqlite()
+            and couchbase_config.is_configured()
+        ):
             logger.info("Attempting to reconnect to Couchbase for sync")
             if backend_manager.try_reconnect_couchbase():
                 logger.info("Successfully reconnected to Couchbase, starting sync")
                 sync_manager = SyncManager(
-                    backend_manager.sqlite_backend,
-                    backend_manager.couchbase_backend
+                    backend_manager.sqlite_backend, backend_manager.couchbase_backend
                 )
                 if sync_manager.needs_sync():
                     logger.info("Syncing data from SQLite to Couchbase")
@@ -107,5 +138,5 @@ def main():
         backend_manager.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

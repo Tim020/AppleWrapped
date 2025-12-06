@@ -198,7 +198,9 @@ class DatabaseBackend(ABC):
     # Query Operations (Reporting)
 
     @abstractmethod
-    def query_top_tracks(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_tracks(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """
         Query top tracks by play count in date range
 
@@ -213,7 +215,9 @@ class DatabaseBackend(ABC):
         pass
 
     @abstractmethod
-    def query_top_artists(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_artists(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """
         Query top artists by play count in date range
 
@@ -228,7 +232,9 @@ class DatabaseBackend(ABC):
         pass
 
     @abstractmethod
-    def query_top_albums(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_albums(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """
         Query top albums by play count in date range
 
@@ -243,7 +249,9 @@ class DatabaseBackend(ABC):
         pass
 
     @abstractmethod
-    def query_top_genres(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_top_genres(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """
         Query top genres by play count in date range
 
@@ -258,7 +266,9 @@ class DatabaseBackend(ABC):
         pass
 
     @abstractmethod
-    def query_most_skipped(self, start_date: str, end_date: str, limit: int) -> List[Dict]:
+    def query_most_skipped(
+        self, start_date: str, end_date: str, limit: int
+    ) -> List[Dict]:
         """
         Query most skipped tracks in date range
 

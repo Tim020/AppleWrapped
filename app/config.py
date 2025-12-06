@@ -11,6 +11,7 @@ from typing import Optional
 @dataclass
 class CouchbaseConfig:
     """Configuration for Couchbase connection"""
+
     host: Optional[str] = None
     port: int = 8091
     username: str = ""
@@ -26,7 +27,7 @@ class CouchbaseConfig:
     counters_collection: str = "counters"
 
     @classmethod
-    def from_args_and_env(cls, args) -> 'CouchbaseConfig':
+    def from_args_and_env(cls, args) -> "CouchbaseConfig":
         """
         Create config from CLI arguments and environment variables
         Priority: CLI args > Environment variables > Defaults
@@ -38,27 +39,26 @@ class CouchbaseConfig:
             CouchbaseConfig instance
         """
         # Get host from CLI or environment
-        host = getattr(args, 'couchbase_host', None) or os.getenv('COUCHBASE_HOST')
+        host = getattr(args, "couchbase_host", None) or os.getenv("COUCHBASE_HOST")
 
         # Get port from CLI or environment
-        port = getattr(args, 'couchbase_port', None) or os.getenv('COUCHBASE_PORT')
+        port = getattr(args, "couchbase_port", None) or os.getenv("COUCHBASE_PORT")
         if port:
             port = int(port)
         else:
             port = 8091
 
         # Get username from CLI or environment
-        username = getattr(args, 'couchbase_username', None) or os.getenv('COUCHBASE_USERNAME', '')
+        username = getattr(args, "couchbase_username", None) or os.getenv(
+            "COUCHBASE_USERNAME", ""
+        )
 
         # Get password from CLI or environment
-        password = getattr(args, 'couchbase_password', None) or os.getenv('COUCHBASE_PASSWORD', '')
-
-        return cls(
-            host=host,
-            port=port,
-            username=username,
-            password=password
+        password = getattr(args, "couchbase_password", None) or os.getenv(
+            "COUCHBASE_PASSWORD", ""
         )
+
+        return cls(host=host, port=port, username=username, password=password)
 
     def is_configured(self) -> bool:
         """

@@ -4,7 +4,7 @@ Tests for backend manager with automatic failover
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from datetime import datetime
 
 from app.database.backend_manager import BackendManager
@@ -15,10 +15,7 @@ from app.config import CouchbaseConfig
 def mock_couchbase_config():
     """Mock Couchbase configuration"""
     config = CouchbaseConfig(
-        host="192.168.1.100",
-        port=8091,
-        username="admin",
-        password="password"
+        host="192.168.1.100", port=8091, username="admin", password="password"
     )
     return config
 
@@ -37,7 +34,7 @@ class TestBackendManagerConnection:
         manager = BackendManager(temp_db_path, mock_couchbase_config)
 
         # Mock the CouchbaseBackend to succeed
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = True
 
@@ -48,12 +45,14 @@ class TestBackendManagerConnection:
             assert not manager.is_using_sqlite()
             MockCouchbase.assert_called_once_with(mock_couchbase_config)
 
-    def test_connect_couchbase_fails_fallback_sqlite(self, temp_db_path, mock_couchbase_config):
+    def test_connect_couchbase_fails_fallback_sqlite(
+        self, temp_db_path, mock_couchbase_config
+    ):
         """Test fallback to SQLite when Couchbase fails"""
         manager = BackendManager(temp_db_path, mock_couchbase_config)
 
         # Mock CouchbaseBackend to fail
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = False
 
@@ -63,7 +62,9 @@ class TestBackendManagerConnection:
             assert manager.is_using_sqlite()
             assert not manager.is_using_couchbase()
 
-    def test_connect_couchbase_not_configured_uses_sqlite(self, temp_db_path, mock_couchbase_config_not_configured):
+    def test_connect_couchbase_not_configured_uses_sqlite(
+        self, temp_db_path, mock_couchbase_config_not_configured
+    ):
         """Test uses SQLite when Couchbase not configured"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
 
@@ -73,9 +74,11 @@ class TestBackendManagerConnection:
         assert manager.is_using_sqlite()
         assert not manager.is_using_couchbase()
 
-    def test_connect_force_sqlite_environment(self, temp_db_path, mock_couchbase_config, monkeypatch):
+    def test_connect_force_sqlite_environment(
+        self, temp_db_path, mock_couchbase_config, monkeypatch
+    ):
         """Test FORCE_SQLITE environment variable"""
-        monkeypatch.setenv('FORCE_SQLITE', '1')
+        monkeypatch.setenv("FORCE_SQLITE", "1")
 
         manager = BackendManager(temp_db_path, mock_couchbase_config)
         result = manager.connect()
@@ -84,14 +87,18 @@ class TestBackendManagerConnection:
         assert manager.is_using_sqlite()
         # Should not have even attempted Couchbase
 
-    def test_is_healthy_when_connected(self, temp_db_path, mock_couchbase_config_not_configured):
+    def test_is_healthy_when_connected(
+        self, temp_db_path, mock_couchbase_config_not_configured
+    ):
         """Test health check when connected"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
         manager.connect()
 
         assert manager.is_healthy()
 
-    def test_is_healthy_when_not_connected(self, temp_db_path, mock_couchbase_config_not_configured):
+    def test_is_healthy_when_not_connected(
+        self, temp_db_path, mock_couchbase_config_not_configured
+    ):
         """Test health check when not connected"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
 
@@ -111,13 +118,15 @@ class TestBackendManagerConnection:
 class TestBackendManagerReconnect:
     """Tests for Couchbase reconnection attempts"""
 
-    def test_try_reconnect_couchbase_from_sqlite(self, temp_db_path, mock_couchbase_config):
+    def test_try_reconnect_couchbase_from_sqlite(
+        self, temp_db_path, mock_couchbase_config
+    ):
         """Test successful reconnect to Couchbase from SQLite"""
         # Start with SQLite
         manager = BackendManager(temp_db_path, mock_couchbase_config)
 
         # Mock Couchbase to fail first, succeed later
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = False
 
@@ -134,11 +143,13 @@ class TestBackendManagerReconnect:
             assert result is True
             assert manager.is_using_couchbase()
 
-    def test_try_reconnect_when_already_using_couchbase(self, temp_db_path, mock_couchbase_config):
+    def test_try_reconnect_when_already_using_couchbase(
+        self, temp_db_path, mock_couchbase_config
+    ):
         """Test reconnect does nothing when already using Couchbase"""
         manager = BackendManager(temp_db_path, mock_couchbase_config)
 
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = True
 
@@ -149,9 +160,11 @@ class TestBackendManagerReconnect:
             result = manager.try_reconnect_couchbase()
             assert result is False
 
-    def test_try_reconnect_when_force_sqlite(self, temp_db_path, mock_couchbase_config, monkeypatch):
+    def test_try_reconnect_when_force_sqlite(
+        self, temp_db_path, mock_couchbase_config, monkeypatch
+    ):
         """Test reconnect respects FORCE_SQLITE"""
-        monkeypatch.setenv('FORCE_SQLITE', '1')
+        monkeypatch.setenv("FORCE_SQLITE", "1")
 
         manager = BackendManager(temp_db_path, mock_couchbase_config)
         manager.connect()
@@ -159,12 +172,14 @@ class TestBackendManagerReconnect:
         result = manager.try_reconnect_couchbase()
         assert result is False
 
-    def test_try_reconnect_fails_stays_on_sqlite(self, temp_db_path, mock_couchbase_config):
+    def test_try_reconnect_fails_stays_on_sqlite(
+        self, temp_db_path, mock_couchbase_config
+    ):
         """Test stays on SQLite when reconnect fails"""
         manager = BackendManager(temp_db_path, mock_couchbase_config)
 
         # Start with SQLite
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = False
 
@@ -181,11 +196,13 @@ class TestBackendManagerReconnect:
 class TestBackendManagerFailover:
     """Tests for automatic failover on operation failures"""
 
-    def test_failover_on_upsert_track_failure(self, temp_db_path, mock_couchbase_config, sample_track_data):
+    def test_failover_on_upsert_track_failure(
+        self, temp_db_path, mock_couchbase_config, sample_track_data
+    ):
         """Test automatic failover when upsert_track fails"""
         manager = BackendManager(temp_db_path, mock_couchbase_config)
 
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             # Setup successful connection
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = True
@@ -203,14 +220,16 @@ class TestBackendManagerFailover:
             assert manager.is_using_sqlite()
 
             # Verify data is in SQLite
-            track = manager.get_track(sample_track_data['persistent_id'])
+            track = manager.get_track(sample_track_data["persistent_id"])
             assert track is not None
 
-    def test_failover_on_create_snapshot_failure(self, temp_db_path, mock_couchbase_config, sample_snapshot_data):
+    def test_failover_on_create_snapshot_failure(
+        self, temp_db_path, mock_couchbase_config, sample_snapshot_data
+    ):
         """Test automatic failover when create_snapshot fails"""
         manager = BackendManager(temp_db_path, mock_couchbase_config)
 
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = True
             mock_cb.create_snapshot.side_effect = Exception("Connection lost")
@@ -224,7 +243,9 @@ class TestBackendManagerFailover:
             assert snapshot_id is not None
             assert manager.is_using_sqlite()
 
-    def test_no_failover_when_already_on_sqlite(self, temp_db_path, mock_couchbase_config_not_configured, sample_track_data):
+    def test_no_failover_when_already_on_sqlite(
+        self, temp_db_path, mock_couchbase_config_not_configured, sample_track_data
+    ):
         """Test exception propagates when already on SQLite"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
         manager.connect()
@@ -232,7 +253,7 @@ class TestBackendManagerFailover:
         assert manager.is_using_sqlite()
 
         # Insert invalid data to cause error
-        invalid_track = {'name': 'Missing persistent_id'}
+        invalid_track = {"name": "Missing persistent_id"}
 
         with pytest.raises(Exception):
             manager.upsert_track(invalid_track)
@@ -241,7 +262,9 @@ class TestBackendManagerFailover:
 class TestBackendManagerOperationDelegation:
     """Tests for operation delegation to active backend"""
 
-    def test_operations_require_active_backend(self, temp_db_path, mock_couchbase_config_not_configured):
+    def test_operations_require_active_backend(
+        self, temp_db_path, mock_couchbase_config_not_configured
+    ):
         """Test operations fail without active backend"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
         # Don't connect
@@ -252,7 +275,9 @@ class TestBackendManagerOperationDelegation:
         with pytest.raises(RuntimeError, match="No active backend available"):
             manager.query_stats()
 
-    def test_get_track_delegates(self, temp_db_path, mock_couchbase_config_not_configured, sample_track_data):
+    def test_get_track_delegates(
+        self, temp_db_path, mock_couchbase_config_not_configured, sample_track_data
+    ):
         """Test get_track delegates to active backend"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
         manager.connect()
@@ -261,12 +286,14 @@ class TestBackendManagerOperationDelegation:
         manager.upsert_track(sample_track_data)
 
         # Get track
-        track = manager.get_track(sample_track_data['persistent_id'])
+        track = manager.get_track(sample_track_data["persistent_id"])
 
         assert track is not None
-        assert track['name'] == sample_track_data['name']
+        assert track["name"] == sample_track_data["name"]
 
-    def test_query_operations_delegate(self, temp_db_path, mock_couchbase_config_not_configured):
+    def test_query_operations_delegate(
+        self, temp_db_path, mock_couchbase_config_not_configured
+    ):
         """Test query operations delegate to active backend"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
         manager.connect()
@@ -275,10 +302,12 @@ class TestBackendManagerOperationDelegation:
         stats = manager.query_stats()
         assert stats is not None
 
-        top_tracks = manager.query_top_tracks('2024-01-01', '2024-01-31', 10)
+        top_tracks = manager.query_top_tracks("2024-01-01", "2024-01-31", 10)
         assert isinstance(top_tracks, list)
 
-    def test_transaction_context_delegates(self, temp_db_path, mock_couchbase_config_not_configured, sample_track_data):
+    def test_transaction_context_delegates(
+        self, temp_db_path, mock_couchbase_config_not_configured, sample_track_data
+    ):
         """Test transaction context delegates to active backend"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
         manager.connect()
@@ -287,14 +316,16 @@ class TestBackendManagerOperationDelegation:
             manager.upsert_track(sample_track_data)
 
         # Verify committed
-        track = manager.get_track(sample_track_data['persistent_id'])
+        track = manager.get_track(sample_track_data["persistent_id"])
         assert track is not None
 
 
 class TestBackendManagerIntegration:
     """Integration tests for backend manager"""
 
-    def test_full_workflow_with_sqlite(self, temp_db_path, mock_couchbase_config_not_configured, sample_tracks_data):
+    def test_full_workflow_with_sqlite(
+        self, temp_db_path, mock_couchbase_config_not_configured, sample_tracks_data
+    ):
         """Test complete workflow using SQLite backend"""
         manager = BackendManager(temp_db_path, mock_couchbase_config_not_configured)
         manager.connect()
@@ -305,16 +336,16 @@ class TestBackendManagerIntegration:
 
         # Create snapshot
         snapshot_data = {
-            'timestamp': datetime.now().isoformat(),
-            'total_tracks': len(sample_tracks_data),
-            'collection_duration_seconds': 60.0
+            "timestamp": datetime.now().isoformat(),
+            "total_tracks": len(sample_tracks_data),
+            "collection_duration_seconds": 60.0,
         }
-        snapshot_id = manager.create_snapshot(snapshot_data)
+        manager.create_snapshot(snapshot_data)
 
         # Query stats
         stats = manager.query_stats()
-        assert stats['total_tracks'] == len(sample_tracks_data)
-        assert stats['total_snapshots'] == 1
+        assert stats["total_tracks"] == len(sample_tracks_data)
+        assert stats["total_snapshots"] == 1
 
     def test_backend_state_checks(self, temp_db_path, mock_couchbase_config):
         """Test backend state checking methods"""
@@ -325,7 +356,7 @@ class TestBackendManagerIntegration:
         assert not manager.is_using_sqlite()
 
         # After connecting without Couchbase available
-        with patch('app.database.backend_manager.CouchbaseBackend') as MockCouchbase:
+        with patch("app.database.backend_manager.CouchbaseBackend") as MockCouchbase:
             mock_cb = MockCouchbase.return_value
             mock_cb.connect.return_value = False
 

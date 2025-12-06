@@ -16,9 +16,7 @@ dependencies = {file = ["requirements.txt"]}
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-]
-couchbase = [
-    "couchbase>=4.0.0",
+    "ruff>=0.14.8"
 ]
 
 [tool.pytest.ini_options]
@@ -58,3 +56,22 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "@abstractmethod",
 ]
+
+[tool.ruff]
+target-version = "py313"
+
+[tool.ruff.format]
+# Use black-compatible formatting
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+# Docstring formatting
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.ruff.lint.isort]
+# Match isort configuration
+known-first-party = ["app"]
+force-single-line = false
+lines-after-imports = 2
